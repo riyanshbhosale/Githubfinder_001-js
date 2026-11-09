@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitPulse — The Ultimate GitHub Visualizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Kindred Dots Interactive Canvas Backdrop -->
+  <canvas id="kindred-canvas"></canvas>
+
+  <!-- Ambient background lighting -->
+  <div class="ambient-glow glow-top"></div>
+  <div class="ambient-glow glow-bottom"></div>
+  <div class="grid-backdrop"></div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!--  LANDING / CONNECT SCREEN                   -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section id="landing" class="screen active">
+    <div class="landing-container">
+      
+      <!-- Pill Badge -->
+      <div class="pill-badge" onclick="openTokenModal()" style="cursor: pointer;" title="API Capacity & Settings">
+        <span class="pill-dot"></span>
+        <span class="pill-text">Peak GitHub Analytics & Streak Tracker</span>
+      </div>
+
+      <div class="brand">
+        <div class="brand-icon-wrapper">
+          <svg class="brand-icon" width="56" height="56" viewBox="0 0 48 48" fill="none">
+            <rect width="48" height="48" rx="14" fill="#131720"/>
+            <rect x="0.5" y="0.5" width="47" height="47" rx="13.5" stroke="rgba(255,255,255,0.08)"/>
+            <path d="M14 34V18L24 10L34 18V34" stroke="#E6EDF3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="24" cy="22" r="4.5" stroke="#3FB950" stroke-width="2.5"/>
+            <path d="M24 26.5V34" stroke="#3FB950" stroke-width="2.5" stroke-linecap="round"/>
+          </svg>
+          <div class="brand-icon-ring"></div>
+        </div>
+        <h1 class="brand-name">GitPulse</h1>
+        <p class="brand-tagline">Visualizing developer consistency, streaks, and repository momentum — flawlessly.</p>
+      </div>
+
+      <!-- Interactive 3D Mascot Toy (Authentic Artwork, Zero White Background, Sunk into Dark Theme) -->
+      <div class="mascot-stage-container" id="mascot-stage">
+        <div class="mascot-ambient-backglow"></div>
+        
+        <!-- 3D Orbiting Contribution Cubes floating in space around mascot -->
+        <div class="mascot-3d-orbit" id="mascot-orbit">
+          <div class="orbit-cube cube-emerald" data-depth="45"></div>
+          <div class="orbit-cube cube-purple" data-depth="-30"></div>
+          <div class="orbit-cube cube-amber" data-depth="35"></div>
+          <div class="orbit-cube cube-blue" data-depth="-20"></div>
+          <div class="orbit-cube cube-pink" data-depth="40"></div>
+        </div>
+
+        <div class="mascot-card-peeker" id="mascot-peeker" onclick="triggerMascotBounce()">
+          <img src="assets/mascot-transparent.png" alt="GitPulse Mascot" class="mascot-img mascot-default active" id="mascot-default-img">
+          <img src="assets/mascot-happy-transparent.png" alt="GitPulse Mascot Happy" class="mascot-img mascot-happy" id="mascot-happy-img">
+          <!-- Dynamic 3D Specular Light Glare that follows cursor -->
+          <div class="mascot-specular-glare" id="mascot-glare"></div>
+        </div>
+      </div>
+
+      <div class="connect-card">
+        <div class="input-card-glow"></div>
+        <div class="input-group">
+          <label for="username-input" class="input-label">
+            <span>Connect GitHub Profile</span>
+            <span class="label-sub">Public · No Auth Needed</span>
+          </label>
+          <div class="input-wrapper">
+            <div class="input-prefix">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path>
+              </svg>
+              <span class="github-domain">github.com/</span>
+            </div>
+            <input type="text" id="username-input" placeholder="username" autocomplete="off" spellcheck="false">
+            <button id="connect-btn" onclick="connectGitHub()">
+              <span class="btn-text">Explore</span>
+              <svg class="btn-arrow" width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M3.333 8h9.334M8.667 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+          <div class="quick-chips">
+            <span class="chips-title">Quick Try:</span>
+            <button class="chip" type="button" onclick="fillUser('torvalds')">@torvalds</button>
+            <button class="chip" type="button" onclick="fillUser('gaearon')">@gaearon</button>
+            <button class="chip" type="button" onclick="fillUser('shadcn')">@shadcn</button>
+            <button class="chip" type="button" onclick="fillUser('leerob')">@leerob</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!--  LOADING SCREEN (3D Snake Runner - Image 4) -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section id="loading" class="screen">
+    <div class="loading-container">
+      
+      <!-- Prominent Snake Wave Runner Stage (Large & Dynamic, Zero White Background) -->
+      <div class="runner-large-stage">
+        <div class="runner-ambient-glow"></div>
+        <div class="runner-track-wrapper">
+          <img src="assets/runner-transparent.png" alt="Loading Telemetry Trail" class="runner-track-img">
+          <div class="runner-laser-beam" id="runner-laser-beam"></div>
+          
+          <!-- Prominent 3D Runner Mascot Actor (Surfs the snake wave path) -->
+          <div class="runner-mascot-actor" id="runner-mascot-actor">
+            <div class="runner-actor-glow"></div>
+            <div class="runner-actor-badge">
+              <span class="beacon-pulse"></span>
+              <span class="beacon-label" id="runner-pct-label">0%</span>
+            </div>
+            <img src="assets/runner-mascot-sprite.png" alt="Running Mascot" class="runner-actor-img">
+          </div>
+          
+          <!-- Legacy Beacon fallback -->
+          <div class="runner-mascot-beacon" id="runner-mascot-beacon" style="display:none;">
+            <span class="beacon-pulse"></span>
+            <span class="beacon-label">0%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="loading-copy">
+        <h3 class="loading-title">Gathering GitHub Telemetry</h3>
+        <p class="loading-sub">Assembling 365 days of code velocity for <span id="loading-username" class="mono-badge"></span></p>
+      </div>
+
+      <!-- Animated Progress Tracker -->
+      <div class="runner-progress-box">
+        <div class="runner-progress-track">
+          <div class="runner-progress-fill" id="loading-progress-bar"></div>
+        </div>
+        <div class="runner-status-row">
+          <span class="runner-status-msg" id="loading-status-text">Connecting to public repositories...</span>
+          <span class="runner-pct-counter" id="loading-pct-counter">0%</span>
+        </div>
+      </div>
+
+      <div class="loading-steps">
+        <div class="step" id="step-profile">
+          <div class="step-indicator"></div>
+          <span>Developer Identity</span>
+        </div>
+        <div class="step" id="step-repos">
+          <div class="step-indicator"></div>
+          <span>Repositories & Stack</span>
+        </div>
+        <div class="step" id="step-contributions">
+          <div class="step-indicator"></div>
+          <span>Contribution Calendar</span>
+        </div>
+        <div class="step" id="step-activity">
+          <div class="step-indicator"></div>
+          <span>Velocity Matrix</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!--  DASHBOARD                                  -->
+  <!-- ═══════════════════════════════════════════ -->
+  <section id="dashboard" class="screen">
+    
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-inner">
+        <div class="topbar-left" onclick="switchUser()">
+          <div class="topbar-logo">
+            <svg width="24" height="24" viewBox="0 0 48 48" fill="none">
+              <rect width="48" height="48" rx="12" fill="#131720"/>
+              <path d="M14 34V18L24 10L34 18V34" stroke="#E6EDF3" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="24" cy="22" r="4.5" stroke="#3FB950" stroke-width="3"/>
+            </svg>
+          </div>
+          <span class="topbar-brand">GitPulse</span>
+          <span class="topbar-badge">Dashboard</span>
+        </div>
+
+        <div class="topbar-right">
+          <button class="topbar-action-btn" onclick="openTokenModal()" title="API Capacity Settings">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 2l-2 2m-1.5 1.5L12 11l-4-4 4-4 5.5 5.5zM3 21l3-3m0 0l-2-2 4-4 2 2-4 4z"></path>
+            </svg>
+            <span>API Settings</span>
+          </button>
+          <button class="topbar-action-btn card-story-btn" onclick="openStoryCardModal()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="3" y1="9" x2="21" y2="9"></line>
+              <line x1="9" y1="21" x2="9" y2="9"></line>
+            </svg>
+            <span>Story Card</span>
+          </button>
+          <button class="topbar-action-btn" onclick="copyShareLink()">
+            <svg id="share-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="18" cy="5" r="3"></circle>
+              <circle cx="6" cy="12" r="3"></circle>
+              <circle cx="18" cy="19" r="3"></circle>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg>
+            <span id="share-text">Share Profile</span>
+          </button>
+          <button class="topbar-btn" onclick="switchUser()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Change User</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Profile Aurora Hero Banner -->
+    <div class="profile-hero">
+      <div class="profile-hero-backdrop"></div>
+      <div class="profile-hero-inner">
+        <div class="profile-main">
+          <div class="avatar-container">
+            <img id="profile-avatar" class="profile-avatar" src="" alt="Avatar">
+            <span class="avatar-status-pill" title="Public Profile Active">
+              <span class="pulse-point"></span>
+            </span>
+          </div>
+
+          <div class="profile-details">
+            <div class="profile-title-row">
+              <h1 id="profile-name" class="profile-name"></h1>
+              <span id="profile-login" class="profile-handle"></span>
+              <span id="profile-archetype-badge" class="profile-archetype-badge">
+                <span class="archetype-icon">⚡</span>
+                <span id="archetype-title">Open Source Engineer</span>
+              </span>
+              <a id="profile-github-btn" class="profile-github-badge" href="" target="_blank" rel="noopener">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                  <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+                </svg>
+                <span>GitHub Profile</span>
+              </a>
+            </div>
+
+            <p id="profile-bio" class="profile-bio"></p>
+
+            <div class="profile-meta-tags">
+              <div id="profile-location" class="meta-tag">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                <span></span>
+              </div>
+              <div id="profile-company" class="meta-tag">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                <span></span>
+              </div>
+              <div id="profile-joined" class="meta-tag">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                <span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4 Stat Counters on Top Right -->
+        <div class="stat-counters">
+          <div class="stat-box">
+            <span class="stat-num" id="stat-repos">0</span>
+            <span class="stat-label">Repositories</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-num" id="stat-followers">0</span>
+            <span class="stat-label">Followers</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-num" id="stat-following">0</span>
+            <span class="stat-label">Following</span>
+          </div>
+          <div class="stat-box highlight-star">
+            <span class="stat-num" id="stat-stars">0</span>
+            <span class="stat-label">Total Stars</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Dashboard Container (Permanent Heatmap & Key Insights) -->
+    <div class="dashboard-body">
+
+      <!-- ══════════════ HUD STREAK METRICS ══════════════ -->
+      <div class="hud-streak-grid" id="section-hud">
+        
+        <!-- Card 1: Current Streak -->
+        <div class="hud-card hud-streak-current">
+          <div class="hud-card-glow"></div>
+          <div class="hud-header">
+            <span class="hud-tag">Consistency</span>
+            <span class="hud-icon-badge fire-badge">🔥</span>
+          </div>
+          <div class="hud-metric">
+            <span class="hud-val" id="streak-current">0</span>
+            <span class="hud-unit">Days</span>
+          </div>
+          <div class="hud-title">Current Streak</div>
+          <div class="hud-footer">
+            <span class="hud-sub" id="streak-current-dates">Calculating...</span>
+            <div class="hud-progress-bar">
+              <div class="hud-progress-fill" id="streak-bar-fill" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: Longest Streak -->
+        <div class="hud-card hud-streak-longest">
+          <div class="hud-card-glow"></div>
+          <div class="hud-header">
+            <span class="hud-tag">All-Time Peak</span>
+            <span class="hud-icon-badge bolt-badge">⚡</span>
+          </div>
+          <div class="hud-metric">
+            <span class="hud-val" id="streak-longest">0</span>
+            <span class="hud-unit">Days</span>
+          </div>
+          <div class="hud-title">Longest Streak</div>
+          <div class="hud-footer">
+            <span class="hud-sub" id="streak-longest-dates">Calculating...</span>
+            <span class="hud-badge-pill" id="streak-longest-badge">Personal Record</span>
+          </div>
+        </div>
+
+        <!-- Card 3: Active Days -->
+        <div class="hud-card hud-streak-active">
+          <div class="hud-card-glow"></div>
+          <div class="hud-header">
+            <span class="hud-tag">Frequency</span>
+            <span class="hud-icon-badge calendar-badge">📅</span>
+          </div>
+          <div class="hud-metric">
+            <span class="hud-val" id="streak-total-days">0</span>
+            <span class="hud-unit">/ 365</span>
+          </div>
+          <div class="hud-title">Active Days</div>
+          <div class="hud-footer">
+            <span class="hud-sub" id="streak-consistency-pct">0% of the year</span>
+            <span class="hud-badge-pill" id="consistency-badge">Consistency</span>
+          </div>
+        </div>
+
+        <!-- Card 4: Total Commits/Contributions -->
+        <div class="hud-card hud-streak-contributions">
+          <div class="hud-card-glow"></div>
+          <div class="hud-header">
+            <span class="hud-tag">Yearly Output</span>
+            <span class="hud-icon-badge chart-badge">📊</span>
+          </div>
+          <div class="hud-metric">
+            <span class="hud-val" id="streak-total-contributions">0</span>
+            <span class="hud-unit">Pushes</span>
+          </div>
+          <div class="hud-title">Total Contributions</div>
+          <div class="hud-footer">
+            <span class="hud-sub" id="streak-avg-sub">~0 / active day</span>
+            <span class="hud-badge-pill">Last 12 Mo</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ══════════════ CARD STORY & DESIGN COLLAGE ══════════════ -->
+      <div class="card-story-section" id="section-story">
+        <div class="story-collage-grid">
+          
+          <!-- Story Card 1: The Origin -->
+          <div class="story-card story-card-origin hover-ink-card">
+            <div class="story-ink-glow"></div>
+            <div class="story-card-top">
+              <span class="story-step-badge">Chapter 01</span>
+              <span class="story-pill-tag">Timeline</span>
+            </div>
+            <div class="story-headline" id="story-origin-headline">The Coding Journey</div>
+            <p class="story-subtext" id="story-origin-text">Pioneering code on GitHub since registration.</p>
+            <div class="story-stat-group">
+              <div class="story-mini-stat">
+                <span class="mini-label">Active Span</span>
+                <strong class="mini-val" id="story-age-val">0 yrs</strong>
+              </div>
+              <div class="story-mini-stat">
+                <span class="mini-label">Member Since</span>
+                <strong class="mini-val" id="story-since-val">—</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Story Card 2: The Rhythm -->
+          <div class="story-card story-card-rhythm hover-ink-card">
+            <div class="story-ink-glow"></div>
+            <div class="story-card-top">
+              <span class="story-step-badge">Chapter 02</span>
+              <span class="story-pill-tag">Consistency</span>
+            </div>
+            <div class="story-headline" id="story-rhythm-headline">Momentum & Flow</div>
+            <p class="story-subtext" id="story-rhythm-text">Consistency pace across 365 days of development.</p>
+            <div class="story-stat-group">
+              <div class="story-mini-stat">
+                <span class="mini-label">Consistency</span>
+                <strong class="mini-val" id="story-consistency-val">0%</strong>
+              </div>
+              <div class="story-mini-stat">
+                <span class="mini-label">Peak Cadence</span>
+                <strong class="mini-val" id="story-peak-val">0 days</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Story Card 3: The Toolkit -->
+          <div class="story-card story-card-craft hover-ink-card">
+            <div class="story-ink-glow"></div>
+            <div class="story-card-top">
+              <span class="story-step-badge">Chapter 03</span>
+              <span class="story-pill-tag">Specialization</span>
+            </div>
+            <div class="story-headline" id="story-craft-headline">Primary Tech Stack</div>
+            <p class="story-subtext" id="story-craft-text">Dominant languages forged across projects and open source.</p>
+            <div class="story-stat-group">
+              <div class="story-mini-stat">
+                <span class="mini-label">Lead Stack</span>
+                <strong class="mini-val" id="story-lead-lang">—</strong>
+              </div>
+              <div class="story-mini-stat">
+                <span class="mini-label">Language Breadth</span>
+                <strong class="mini-val" id="story-lang-count">0 tools</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Story Card 4: The Impact & OSS -->
+          <div class="story-card story-card-impact hover-ink-card">
+            <div class="story-ink-glow"></div>
+            <div class="story-card-top">
+              <span class="story-step-badge">Chapter 04</span>
+              <span class="story-pill-tag">Footprint</span>
+            </div>
+            <div class="story-headline" id="story-impact-headline">Open Source Impact</div>
+            <p class="story-subtext" id="story-impact-text">Contributions, bug fixes, and community repositories.</p>
+            <div class="story-stat-group">
+              <div class="story-mini-stat">
+                <span class="mini-label">Total Repos</span>
+                <strong class="mini-val" id="story-repos-val">0</strong>
+              </div>
+              <div class="story-mini-stat">
+                <span class="mini-label">Community Stars</span>
+                <strong class="mini-val" id="story-stars-val">0</strong>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ══════════════ HEATMAP SECTION (CodEyes Peak) ══════════════ -->
+      <div class="card heatmap-panel" id="section-matrix">
+        <div class="panel-header">
+          <div class="panel-header-left">
+            <h2 class="panel-title">Contribution Matrix</h2>
+            <p class="panel-desc">Visual distribution of all public commits, PRs, and code activity</p>
+          </div>
+          
+          <!-- Heatmap Insights Ribbon -->
+          <div class="heatmap-ribbon">
+            <div class="ribbon-stat">
+              <span class="ribbon-label">Peak Velocity:</span>
+              <strong class="ribbon-val" id="ribbon-peak-day">—</strong>
+            </div>
+            <div class="ribbon-stat">
+              <span class="ribbon-label">Total Matrix Sum:</span>
+              <strong class="ribbon-val" id="ribbon-total">—</strong>
+            </div>
+          </div>
+
+          <div class="heatmap-legend">
+            <span class="legend-text">Zero</span>
+            <span class="legend-box" style="background: var(--heat-0)"></span>
+            <span class="legend-box" style="background: var(--heat-1)"></span>
+            <span class="legend-box" style="background: var(--heat-2)"></span>
+            <span class="legend-box" style="background: var(--heat-3)"></span>
+            <span class="legend-box" style="background: var(--heat-4)"></span>
+            <span class="legend-text">Peak</span>
+          </div>
+        </div>
+
+        <!-- Heatmap Calendar Canvas Wrapper -->
+        <div class="heatmap-viewport">
+          <div class="heatmap-months-track" id="heatmap-months"></div>
+          <div class="heatmap-body">
+            <div class="heatmap-weekdays">
+              <span></span><span>Mon</span><span></span><span>Wed</span><span></span><span>Fri</span><span></span>
+            </div>
+            <div class="heatmap-matrix-scroll">
+              <div class="heatmap-matrix" id="heatmap-grid"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sleek Tooltip Popup -->
+        <div class="heatmap-popover" id="heatmap-tooltip">
+          <div class="popover-count" id="tooltip-count">0 contributions</div>
+          <div class="popover-date" id="tooltip-date">Date</div>
+        </div>
+      </div>
+
+      <!-- ══════════════ TWO COLUMN ROW: LANGUAGES + MONTHLY ══════════════ -->
+      <div class="analytics-row" id="section-analytics">
+        
+        <!-- Language Composition -->
+        <div class="card lang-panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Technology Ecosystem</h2>
+              <p class="panel-desc" id="lang-panel-desc">All projects & open-source contributions</p>
+            </div>
+            <div class="lang-filter-tabs">
+              <button class="filter-tab active" id="tab-lang-all" onclick="toggleLangScope('all')">All Repos + OSS</button>
+              <button class="filter-tab" id="tab-lang-personal" onclick="toggleLangScope('personal')">Personal Only</button>
+            </div>
+          </div>
+
+          <!-- Multi-Color Distribution Bar -->
+          <div class="lang-bar" id="lang-bar-distribution"></div>
+
+          <div class="lang-container">
+            <div class="donut-box">
+              <canvas id="lang-chart" width="220" height="220"></canvas>
+            </div>
+            <div class="lang-legend" id="lang-list"></div>
+          </div>
+        </div>
+
+        <!-- Monthly Momentum Bar Chart -->
+        <div class="card monthly-panel">
+          <div class="panel-header">
+            <div>
+              <h2 class="panel-title">Monthly Trajectory</h2>
+              <p class="panel-desc">Contribution velocity across the last 12 calendar months</p>
+            </div>
+            <div class="monthly-peak-tag" id="monthly-peak-label">High Momentum</div>
+          </div>
+
+          <div class="monthly-graph" id="monthly-chart"></div>
+        </div>
+
+      </div>
+
+      <!-- ══════════════ TOP REPOSITORIES ══════════════ -->
+      <div class="card repos-panel" id="section-repos">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title">Showcase Repositories</h2>
+            <p class="panel-desc">Top code repositories sorted by impact and engagement</p>
+          </div>
+          <div class="repos-sort-tabs">
+            <button class="sort-tab active" data-sort="stars" onclick="sortRepos('stars')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+              <span>Stars</span>
+            </button>
+            <button class="sort-tab" data-sort="forks" onclick="sortRepos('forks')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="18" r="3"></circle><circle cx="6" cy="6" r="3"></circle><circle cx="18" cy="6" r="3"></circle><path d="M18 9v1a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V9"></path><path d="M12 12v3"></path></svg>
+              <span>Forks</span>
+            </button>
+            <button class="sort-tab" data-sort="updated" onclick="sortRepos('updated')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <span>Recent</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="repos-grid" id="repos-grid"></div>
+      </div>
+
+    </div>
+
+    <!-- ══════════════ HOLOGRAPHIC STORY CARD MODAL ══════════════ -->
+    <div id="story-modal" class="story-modal-backdrop" onclick="closeStoryCardModal(event)">
+      <div class="story-modal-dialog" onclick="event.stopPropagation()">
+        <button class="modal-close-btn" onclick="closeStoryCardModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+
+        <!-- The Holo Trading Card -->
+        <div class="holo-card" id="holo-card-target">
+          <div class="holo-sheen"></div>
+          <div class="holo-card-inner">
+            <div class="holo-top">
+              <div class="holo-brand">
+                <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
+                  <rect width="48" height="48" rx="12" fill="#131720"/>
+                  <path d="M14 34V18L24 10L34 18V34" stroke="#E6EDF3" stroke-width="3" stroke-linecap="round"/>
+                  <circle cx="24" cy="22" r="4.5" stroke="#3FB950" stroke-width="3"/>
+                </svg>
+                <span>GitPulse Developer Card</span>
+              </div>
+              <span class="holo-tier-pill" id="holo-tier-pill">PRO HERO</span>
+            </div>
+
+            <div class="holo-profile-hero">
+              <img id="holo-avatar" class="holo-avatar" src="" alt="Avatar">
+              <div class="holo-identity">
+                <h3 id="holo-name" class="holo-name"></h3>
+                <span id="holo-handle" class="holo-handle"></span>
+                <div class="holo-role-badge" id="holo-archetype">Developer</div>
+              </div>
+            </div>
+
+            <!-- Mini stats bar in trading card -->
+            <div class="holo-stats-grid">
+              <div class="holo-stat-box">
+                <span class="holo-stat-label">Current Streak</span>
+                <strong class="holo-stat-num" id="holo-current-streak">0</strong>
+              </div>
+              <div class="holo-stat-box">
+                <span class="holo-stat-label">Longest Run</span>
+                <strong class="holo-stat-num" id="holo-longest-streak">0</strong>
+              </div>
+              <div class="holo-stat-box">
+                <span class="holo-stat-label">Yearly Pushes</span>
+                <strong class="holo-stat-num" id="holo-total-pushes">0</strong>
+              </div>
+              <div class="holo-stat-box">
+                <span class="holo-stat-label">Lead Stack</span>
+                <strong class="holo-stat-num" id="holo-lead-stack">—</strong>
+              </div>
+            </div>
+
+            <!-- Mini heatmap visualizer inside card -->
+            <div class="holo-matrix-preview" id="holo-matrix-preview"></div>
+
+            <div class="holo-footer">
+              <span class="holo-verified-text">● Verified GitHub Telemetry</span>
+              <span class="holo-brand-tag">gitpulse.dev</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Actions -->
+        <div class="modal-actions">
+          <button class="modal-action-btn primary" onclick="copyCardDetails()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <span id="copy-card-text">Copy Story Summary</span>
+          </button>
+          <button class="modal-action-btn" onclick="closeStoryCardModal()">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ GITHUB TOKEN / RATE LIMIT MODAL ══════════════ -->
+    <div id="token-modal" class="story-modal-backdrop" onclick="closeTokenModal(event)">
+      <div class="story-modal-dialog token-modal-card" onclick="event.stopPropagation()">
+        <button class="modal-close-btn" onclick="closeTokenModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+
+        <div class="token-modal-content">
+          <div class="token-icon-badge">⚡</div>
+          <h3 class="token-title">High-Capacity GitHub API Mode</h3>
+          <p class="token-desc">By default, GitPulse caches queries and uses a zero-block fallback so you are never rate-limited. If you wish to fetch unthrottled live telemetry across hundreds of repositories, you can optionally provide a Personal Access Token (stored 100% locally in your browser).</p>
+
+          <div class="token-input-box">
+            <label for="pat-input" class="token-input-label">GitHub Token (Optional)</label>
+            <input type="password" id="pat-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" spellcheck="false">
+            <span class="token-hint">Tokens need no extra permissions (read-only public data). Stored only in your device's localStorage.</span>
+          </div>
+
+          <div class="modal-actions">
+            <button class="modal-action-btn primary" onclick="saveToken()">Save & Apply</button>
+            <button class="modal-action-btn" onclick="closeTokenModal()">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Refined Footer -->
+    <footer class="footer">
+      <div class="footer-inner">
+        <div class="footer-left">
+          <span class="footer-logo">GitPulse</span>
+          <span class="footer-note">Precision analytics directly from the GitHub REST API</span>
+        </div>
+        <div class="footer-right">
+          <button class="scroll-top-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'})">
+            <span>Back to top</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg>
+          </button>
+        </div>
+      </div>
+    </footer>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
