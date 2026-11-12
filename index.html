@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=brutal_1">
 </head>
 <body>
   <!-- Kindred Dots Interactive Canvas Backdrop -->
@@ -45,10 +45,8 @@
         <p class="brand-tagline">Visualizing developer consistency, streaks, and repository momentum — flawlessly.</p>
       </div>
 
-      <!-- Interactive 3D Mascot Toy (Authentic Artwork, Zero White Background, Sunk into Dark Theme) -->
-      <div class="mascot-stage-container" id="mascot-stage">
-        <div class="mascot-ambient-backglow"></div>
-        
+      <!-- ═══ 3D Interactive Mascot Buddy (Zero White Background, Sunk into Dark Theme) ═══ -->
+      <div class="mascot-hero-scene" id="mascot-stage">
         <!-- 3D Orbiting Contribution Cubes floating in space around mascot -->
         <div class="mascot-3d-orbit" id="mascot-orbit">
           <div class="orbit-cube cube-emerald" data-depth="45"></div>
@@ -58,11 +56,16 @@
           <div class="orbit-cube cube-pink" data-depth="40"></div>
         </div>
 
-        <div class="mascot-card-peeker" id="mascot-peeker" onclick="triggerMascotBounce()">
-          <img src="assets/mascot-transparent.png" alt="GitPulse Mascot" class="mascot-img mascot-default active" id="mascot-default-img">
-          <img src="assets/mascot-happy-transparent.png" alt="GitPulse Mascot Happy" class="mascot-img mascot-happy" id="mascot-happy-img">
-          <!-- Dynamic 3D Specular Light Glare that follows cursor -->
-          <div class="mascot-specular-glare" id="mascot-glare"></div>
+        <!-- Main Mascot 3D Container -->
+        <div class="mascot-3d-card" id="mascot-peeker" onclick="triggerMascotBounce()">
+          <!-- Default expression: curious peeking with contribution cubes -->
+          <div class="mascot-art mascot-default-art" id="mascot-default-img">
+            <img src="assets/mascot-transparent.png?v=brutal_1" alt="GitPulse Mascot" draggable="false">
+          </div>
+          <!-- Happy expression: joyful smile on typing / hover -->
+          <div class="mascot-art mascot-happy-art" id="mascot-happy-img">
+            <img src="assets/mascot-happy-transparent.png?v=brutal_1" alt="GitPulse Mascot Happy" draggable="false">
+          </div>
         </div>
       </div>
 
@@ -106,27 +109,25 @@
   <section id="loading" class="screen">
     <div class="loading-container">
       
-      <!-- Prominent Snake Wave Runner Stage (Large & Dynamic, Zero White Background) -->
+      <!-- 3D Snake Wave Runner Stage (Zero White Background, Transparent Telemetry Path) -->
       <div class="runner-large-stage">
-        <div class="runner-ambient-glow"></div>
         <div class="runner-track-wrapper">
-          <img src="assets/runner-transparent.png" alt="Loading Telemetry Trail" class="runner-track-img">
-          <div class="runner-laser-beam" id="runner-laser-beam"></div>
-          
-          <!-- Prominent 3D Runner Mascot Actor (Surfs the snake wave path) -->
-          <div class="runner-mascot-actor" id="runner-mascot-actor">
-            <div class="runner-actor-glow"></div>
-            <div class="runner-actor-badge">
-              <span class="beacon-pulse"></span>
-              <span class="beacon-label" id="runner-pct-label">0%</span>
+          <div class="runner-track-scene">
+            <img src="assets/runner-transparent.png?v=brutal_1" alt="Contribution Trail" class="runner-track-img">
+            <canvas id="runner-fx-canvas" class="runner-fx-canvas"></canvas>
+            <div class="runner-laser-beam" id="runner-laser-beam"></div>
+            
+            <!-- Authentic Surfing Runner Mascot -->
+            <div class="runner-mascot-actor" id="runner-mascot-actor">
+              <div class="runner-actor-badge">
+                <span class="beacon-pulse"></span>
+                <span class="beacon-label" id="runner-pct-label">0%</span>
+              </div>
+              <div class="runner-sprite-wrap">
+                <img src="assets/runner-mascot-sprite.png?v=brutal_1" alt="Running Mascot" class="runner-actor-img">
+                <div class="runner-board-thrust"></div>
+              </div>
             </div>
-            <img src="assets/runner-mascot-sprite.png" alt="Running Mascot" class="runner-actor-img">
-          </div>
-          
-          <!-- Legacy Beacon fallback -->
-          <div class="runner-mascot-beacon" id="runner-mascot-beacon" style="display:none;">
-            <span class="beacon-pulse"></span>
-            <span class="beacon-label">0%</span>
           </div>
         </div>
       </div>
@@ -703,6 +704,6 @@
     </footer>
   </section>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=brutal_1"></script>
 </body>
 </html>
