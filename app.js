@@ -148,56 +148,86 @@ function fillUser(name) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  INTERACTIVE 3D MASCOT PEAKER (Authentic Artwork & 3D Physics)
-//  - Real spatial 3D perspective tilt following cursor movement
-//  - Dynamic 3D specular light glare gliding across vinyl finish
-//  - 3D orbiting contribution cubes with independent depth parallax
-//  - Interactive expression triggers (smiling on input/button hover)
-//  - Click-to-bounce squash & stretch animation
+//  3D INTERACTIVE MASCOT BUDDY — Pure Physics Engine
+//  - Buttery 60fps spring-damped cursor tilt with real momentum
+//  - Seamless breathing oscillation integrated directly in transform
+//  - Dynamic vinyl specular light reflection tracking cursor
+//  - Squash & stretch spring bounce on click
 //  - Zero white background, 100% theme integration
 // ═══════════════════════════════════════════════════════════
 
 function initMascotInteractiveTilt() {
+  const stage = document.getElementById('mascot-stage');
   const peeker = document.getElementById('mascot-peeker');
-  const glare = document.getElementById('mascot-glare');
-  const cubes = document.querySelectorAll('.orbit-cube');
   const input = document.getElementById('username-input');
   const btn = document.getElementById('connect-btn');
+  const cubes = document.querySelectorAll('.orbit-cube');
   if (!peeker) return;
 
+  // Spring physics variables
   let targetX = 0, targetY = 0;
   let currentX = 0, currentY = 0;
+  let velocityX = 0, velocityY = 0;
+  let lastTime = performance.now();
 
-  function update3D() {
-    // Smooth lerp physics
-    currentX += (targetX - currentX) * 0.14;
-    currentY += (targetY - currentY) * 0.14;
+  const LERP_SPEED = 0.085;
+  const DAMPING = 0.88;
+  const MAX_TILT = 18; // degrees
 
-    const rotY = currentX * 16;
-    const rotX = -currentY * 12;
-    peeker.style.transform = `perspective(900px) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg) scale3d(1, 1, 1)`;
+  function update3D(now) {
+    const dt = Math.min((now - lastTime) / 16.67, 2.0);
+    lastTime = now;
 
-    if (glare) {
-      const gx = 50 - currentX * 36;
-      const gy = 35 - currentY * 30;
-      glare.style.setProperty('--glare-x', `${gx.toFixed(1)}%`);
-      glare.style.setProperty('--glare-y', `${gy.toFixed(1)}%`);
+    // Spring-damped smooth interpolation
+    const dx = targetX - currentX;
+    const dy = targetY - currentY;
+    velocityX = (velocityX + dx * LERP_SPEED) * DAMPING;
+    velocityY = (velocityY + dy * LERP_SPEED) * DAMPING;
+    currentX += velocityX * dt;
+    currentY += velocityY * dt;
+
+    // Organic idle breathing when not bouncing
+    if (!peeker.classList.contains('bounce')) {
+      const breatheY = Math.sin(now * 0.002) * 3;
+      const breatheScale = 1 + Math.sin(now * 0.002) * 0.01;
+      const rotY = currentX * MAX_TILT;
+      const rotX = -currentY * (MAX_TILT * 0.75);
+
+      peeker.style.transform = `perspective(1000px) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg) translateY(${breatheY.toFixed(2)}px) scale3d(${breatheScale.toFixed(3)}, ${breatheScale.toFixed(3)}, 1)`;
     }
 
-    cubes.forEach(cube => {
-      const depth = parseFloat(cube.dataset.depth || 25);
-      const tx = currentX * (depth * 0.55);
-      const ty = currentY * (depth * 0.45);
-      cube.style.transform = `translate3d(${tx.toFixed(1)}px, ${ty.toFixed(1)}px, ${depth}px) rotate(${(currentX * 12).toFixed(1)}deg)`;
-    });
+    // 3D Parallax on Orbiting Contribution Cubes
+    if (cubes && cubes.length > 0) {
+      cubes.forEach((cube) => {
+        const depth = parseFloat(cube.dataset.depth || 30);
+        const tx = currentX * (depth * 0.45);
+        const ty = currentY * (depth * 0.35);
+        const rot = currentX * 18;
+        cube.style.transform = `translate3d(${tx.toFixed(1)}px, ${ty.toFixed(1)}px, ${depth}px) rotate(${rot.toFixed(1)}deg)`;
+      });
+    }
 
     requestAnimationFrame(update3D);
   }
   requestAnimationFrame(update3D);
 
-  window.addEventListener('pointermove', e => {
-    targetX = (e.clientX / window.innerWidth - 0.5) * 2;
-    targetY = (e.clientY / window.innerHeight - 0.5) * 2;
+  // Smooth pointer tracking relative to mascot stage
+  window.addEventListener('pointermove', (e) => {
+    if (stage) {
+      const rect = stage.getBoundingClientRect();
+      const inProximity = (
+        e.clientX >= rect.left - 150 && e.clientX <= rect.right + 150 &&
+        e.clientY >= rect.top - 100 && e.clientY <= rect.bottom + 150
+      );
+      if (inProximity) {
+        targetX = Math.max(-1.25, Math.min(1.25, ((e.clientX - (rect.left + rect.width / 2)) / (rect.width / 2))));
+        targetY = Math.max(-1.25, Math.min(1.25, ((e.clientY - (rect.top + rect.height / 2)) / (rect.height / 2))));
+        return;
+      }
+    }
+    // Outside stage: gentle ambient tilt
+    targetX = (e.clientX / window.innerWidth - 0.5) * 0.65;
+    targetY = (e.clientY / window.innerHeight - 0.5) * 0.65;
   });
 
   window.addEventListener('pointerleave', () => {
@@ -205,23 +235,31 @@ function initMascotInteractiveTilt() {
     targetY = 0;
   });
 
-  // Interactive Expression Triggers
+  // Touch support for mobile / tablets
+  window.addEventListener('touchmove', (e) => {
+    const t = e.touches[0];
+    if (t) {
+      targetX = (t.clientX / window.innerWidth - 0.5) * 1.5;
+      targetY = (t.clientY / window.innerHeight - 0.5) * 1.5;
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchend', () => {
+    targetX = 0;
+    targetY = 0;
+  });
+
+  // Expression crossfading (Curious -> Happy Smile)
   if (input) {
-    input.addEventListener('focus', () => {
-      peeker.classList.add('happy-mode');
-    });
+    input.addEventListener('focus', () => peeker.classList.add('happy-mode'));
     input.addEventListener('blur', () => {
       if (!input.value.trim()) peeker.classList.remove('happy-mode');
     });
-    input.addEventListener('input', () => {
-      peeker.classList.add('happy-mode');
-    });
+    input.addEventListener('input', () => peeker.classList.add('happy-mode'));
   }
 
   if (btn) {
-    btn.addEventListener('mouseenter', () => {
-      peeker.classList.add('happy-mode');
-    });
+    btn.addEventListener('mouseenter', () => peeker.classList.add('happy-mode'));
     btn.addEventListener('mouseleave', () => {
       if (!input || !input.value.trim()) peeker.classList.remove('happy-mode');
     });
@@ -231,8 +269,10 @@ function initMascotInteractiveTilt() {
 function triggerMascotBounce() {
   const peeker = document.getElementById('mascot-peeker');
   if (!peeker) return;
+  peeker.classList.remove('bounce');
+  void peeker.offsetWidth; // Force reflow
   peeker.classList.add('bounce', 'happy-mode');
-  setTimeout(() => peeker.classList.remove('bounce'), 600);
+  setTimeout(() => peeker.classList.remove('bounce'), 650);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -243,7 +283,7 @@ function triggerMascotBounce() {
 //  - Seed registry & mirror fallback for zero-delay offline readiness
 // ═══════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v10';
+const CACHE_VERSION = 'v11';
 
 function purgeOldCaches() {
   try {
@@ -504,41 +544,293 @@ async function fetchEvents(username) {
   }
 }
 
-// ── Loading Progress Tracker (Dynamic Runner Wave) ────────
-function updateLoadingProgress(pct, status) {
+// ── Continuous 60fps Wave Surfer Loading Engine (Brutally Perfect) ───
+let runnerState = {
+  active: false,
+  visualPct: 0,
+  targetPct: 0,
+  statusText: '',
+  animId: null
+};
+
+// 51 continuous spline keyframes mathematically locking Mona onto the wave blocks [pct, y, bankAngle]
+const RUNNER_SPLINE = [
+  [0, 85.0, -5.5],
+  [2, 84.8, -5.1],
+  [4, 84.6, -5.2],
+  [6, 84.4, -5.0],
+  [8, 84.2, -4.3],
+  [10, 84.0, -3.6],
+  [12, 83.9, -2.3],
+  [14, 83.8, -0.7],
+  [16, 83.8, 0.5],
+  [18, 83.9, 1.5],
+  [20, 84.0, 1.7],
+  [22, 84.1, 0.1],
+  [24, 84.2, -5.5],
+  [26, 84.0, -12.8],
+  [28, 83.5, -16.0],
+  [30, 77.4, -16.0],
+  [32, 71.3, -16.0],
+  [34, 65.5, -16.0],
+  [36, 59.8, -16.0],
+  [38, 54.9, -16.0],
+  [40, 50.0, -16.0],
+  [42, 48.8, -8.0],
+  [44, 47.6, 8.0],
+  [46, 49.4, 16.0],
+  [48, 52.5, 16.0],
+  [50, 59.8, 16.0],
+  [52, 65.5, 16.0],
+  [54, 71.3, 16.0],
+  [56, 80.3, 10.9],
+  [58, 82.1, -2.3],
+  [60, 78.0, -13.1],
+  [62, 70.6, -16.0],
+  [64, 64.9, -16.0],
+  [66, 56.0, -16.0],
+  [68, 49.8, -16.0],
+  [70, 48.3, -16.0],
+  [72, 51.3, -16.0],
+  [74, 49.4, -16.0],
+  [76, 42.0, -16.0],
+  [78, 37.6, -16.0],
+  [80, 34.8, -16.0],
+  [82, 29.2, -16.0],
+  [84, 26.8, -16.0],
+  [86, 21.2, -16.0],
+  [88, 19.4, -15.0],
+  [90, 16.6, -6.0],
+  [92, 16.6, 9.0],
+  [94, 19.4, 16.0],
+  [96, 22.1, 16.0],
+  [98, 28.0, 16.0],
+  [100, 32.0, 16.0]
+];
+
+function getTrackState(p) {
+  const clamped = Math.max(0, Math.min(100, p));
+  for (let i = 0; i < RUNNER_SPLINE.length - 1; i++) {
+    const p0 = RUNNER_SPLINE[i];
+    const p1 = RUNNER_SPLINE[i + 1];
+    if (clamped >= p0[0] && clamped <= p1[0]) {
+      const span = p1[0] - p0[0];
+      const t = span > 0 ? (clamped - p0[0]) / span : 0;
+      const st = t * t * (3 - 2 * t); // smooth cubic hermite interpolation
+      const y = p0[1] + (p1[1] - p0[1]) * st;
+      const bank = p0[2] + (p1[2] - p0[2]) * st;
+      return { y, bank };
+    }
+  }
+  return { y: 32.0, bank: 16.0 };
+}
+
+function startLoadingRunner() {
+  runnerState.active = true;
+  runnerState.visualPct = 0;
+  runnerState.targetPct = 18;
+  runnerState.statusText = 'Scanning developer profile & metadata...';
+
   const bar = document.getElementById('loading-progress-bar');
   const txt = document.getElementById('loading-status-text');
   const counter = document.getElementById('loading-pct-counter');
   const beam = document.getElementById('runner-laser-beam');
-  const beacon = document.getElementById('runner-mascot-beacon');
   const actor = document.getElementById('runner-mascot-actor');
   const pctLabel = document.getElementById('runner-pct-label');
+  const fxCanvas = document.getElementById('runner-fx-canvas');
+  const fxCtx = fxCanvas ? fxCanvas.getContext('2d') : null;
 
-  if (bar) bar.style.width = `${pct}%`;
-  if (txt) txt.textContent = status;
-  if (counter) counter.textContent = `${pct}%`;
+  let sceneW = 920;
+  let sceneH = 150;
+  let dpr = window.devicePixelRatio || 1;
 
-  if (beam) {
-    beam.style.left = `${Math.max(0, pct - 16)}%`;
+  function resizeFx() {
+    if (!fxCanvas || !fxCtx) return;
+    const rect = fxCanvas.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      dpr = window.devicePixelRatio || 1;
+      if (Math.abs(sceneW - rect.width) > 0.5 || Math.abs(sceneH - rect.height) > 0.5) {
+        sceneW = rect.width;
+        sceneH = rect.height;
+        fxCanvas.width = Math.round(sceneW * dpr);
+        fxCanvas.height = Math.round(sceneH * dpr);
+        fxCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+    }
   }
-  
-  const waveY = Math.sin((pct / 100) * Math.PI * 3.4) * 26;
-  const slope = Math.cos((pct / 100) * Math.PI * 3.4) * 16;
+  resizeFx();
 
-  if (actor) {
-    actor.style.left = `${Math.min(Math.max(pct, 4), 95)}%`;
-    actor.style.top = `${45 + waveY}%`;
-    actor.style.transform = `translate(-50%, -50%) rotate(${slope.toFixed(1)}deg)`;
-  }
-  if (pctLabel) {
-    pctLabel.textContent = `${pct}%`;
+  const wakeParticles = [];
+  const burstMilestones = { 25: false, 50: false, 75: false, 100: false };
+  let lastTime = performance.now();
+
+  function triggerMilestoneBurst(x, y) {
+    for (let i = 0; i < 14; i++) {
+      const angle = (Math.PI * 2 * i) / 14 + (Math.random() - 0.5) * 0.4;
+      const spd = 2.0 + Math.random() * 2.5;
+      wakeParticles.push({
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * spd,
+        vy: Math.sin(angle) * spd,
+        size: 2.2 + Math.random() * 2.5,
+        life: 1.0,
+        decay: 0.035 + Math.random() * 0.02,
+        color: Math.random() > 0.5 ? '88, 166, 255' : '57, 211, 83'
+      });
+    }
   }
 
-  if (beacon) {
-    beacon.style.left = `${Math.min(Math.max(pct, 8), 92)}%`;
-    beacon.style.top = `${45 + waveY}%`;
-    const label = beacon.querySelector('.beacon-label');
-    if (label) label.textContent = `${pct}%`;
+  function tick(now) {
+    if (!runnerState.active) return;
+    const dt = Math.min((now - lastTime) / 1000, 0.1);
+    lastTime = now;
+
+    // Ensure canvas stays in perfect sync with responsive layout
+    resizeFx();
+
+    // Smooth forward interpolation with dynamic acceleration (fluid & never freezing)
+    const diff = runnerState.targetPct - runnerState.visualPct;
+    if (diff > 0.05) {
+      const spd = runnerState.targetPct >= 100 ? 5.0 : 3.8;
+      runnerState.visualPct += diff * Math.min(dt * spd, 0.28) + dt * 2.2;
+    } else if (runnerState.visualPct < 98.5 && runnerState.targetPct < 100) {
+      runnerState.visualPct += dt * 2.0;
+    }
+
+    if (runnerState.visualPct > 100) runnerState.visualPct = 100;
+    const p = runnerState.visualPct;
+
+    // Update progress bar and numeric counters
+    if (bar) bar.style.width = p.toFixed(1) + '%';
+    if (counter) counter.textContent = Math.round(p) + '%';
+    if (pctLabel) pctLabel.textContent = Math.round(p) + '%';
+    if (txt && runnerState.statusText) {
+      txt.textContent = runnerState.statusText;
+    }
+    if (beam) {
+      beam.style.left = Math.max(0, p - 8).toFixed(1) + '%';
+    }
+
+    // Spline wave surfing position & banking angle
+    const track = getTrackState(p);
+    const surfBob = Math.sin(now * 0.008) * 1.5;
+
+    if (actor) {
+      actor.style.left = Math.min(Math.max(p, 0.5), 99.5).toFixed(1) + '%';
+      actor.style.top = (track.y + surfBob).toFixed(1) + '%';
+      actor.style.transform = 'translate(-30%, -96%) rotate(' + track.bank.toFixed(1) + 'deg)';
+    }
+
+    // Check milestones for celebratory particle bursts
+    for (const m of [25, 50, 75, 100]) {
+      if (p >= m && !burstMilestones[m]) {
+        burstMilestones[m] = true;
+        const bx = (m / 100) * sceneW;
+        const by = ((getTrackState(m).y + surfBob) / 100) * sceneH;
+        triggerMilestoneBurst(bx, by);
+      }
+    }
+
+    // FX Canvas: Neon wake particles and trail illumination
+    if (fxCtx && fxCanvas) {
+      fxCtx.clearRect(0, 0, sceneW, sceneH);
+
+      // Emit wake sparks from surfboard tail thruster
+      if (Math.random() < 0.9) {
+        const px = (p / 100) * sceneW - 14;
+        const py = ((track.y + surfBob) / 100) * sceneH + 2;
+        wakeParticles.push({
+          x: px,
+          y: py,
+          vx: -1.6 - Math.random() * 2.2,
+          vy: (Math.random() - 0.5) * 1.6,
+          size: 1.8 + Math.random() * 2.4,
+          life: 1.0,
+          decay: 0.035 + Math.random() * 0.02,
+          color: Math.random() > 0.45 ? '88, 166, 255' : '63, 185, 80'
+        });
+      }
+
+      // Draw and update wake particles
+      for (let i = wakeParticles.length - 1; i >= 0; i--) {
+        const pt = wakeParticles[i];
+        pt.x += pt.vx;
+        pt.y += pt.vy;
+        pt.life -= pt.decay;
+        if (pt.life <= 0) {
+          wakeParticles.splice(i, 1);
+          continue;
+        }
+        fxCtx.beginPath();
+        fxCtx.arc(pt.x, pt.y, Math.max(0.2, pt.size * pt.life), 0, Math.PI * 2);
+        fxCtx.fillStyle = 'rgba(' + pt.color + ', ' + (pt.life * 0.9).toFixed(2) + ')';
+        fxCtx.shadowColor = 'rgba(' + pt.color + ', 1)';
+        fxCtx.shadowBlur = 6;
+        fxCtx.fill();
+        fxCtx.shadowBlur = 0;
+      }
+
+      // Active track trace line with glowing neon dual-pass
+      if (p > 1.2) {
+        fxCtx.save();
+        fxCtx.beginPath();
+        for (let s = 0; s <= p; s += 1.0) {
+          const st = getTrackState(s);
+          const sx = (s / 100) * sceneW;
+          const sy = (st.y / 100) * sceneH;
+          if (s === 0) fxCtx.moveTo(sx, sy);
+          else fxCtx.lineTo(sx, sy);
+        }
+        // Outer glowing aura
+        fxCtx.strokeStyle = 'rgba(63, 185, 80, 0.4)';
+        fxCtx.lineWidth = 3.5;
+        fxCtx.shadowColor = '#39d353';
+        fxCtx.shadowBlur = 10;
+        fxCtx.stroke();
+
+        // Inner electric core
+        fxCtx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        fxCtx.lineWidth = 1.4;
+        fxCtx.shadowColor = '#58a6ff';
+        fxCtx.shadowBlur = 4;
+        fxCtx.stroke();
+        fxCtx.restore();
+      }
+    }
+
+    runnerState.animId = requestAnimationFrame(tick);
+  }
+
+  if (runnerState.animId) cancelAnimationFrame(runnerState.animId);
+  runnerState.animId = requestAnimationFrame(tick);
+}
+
+function updateLoadingProgress(target, status) {
+  runnerState.targetPct = Math.min(100, target);
+  if (status) runnerState.statusText = status;
+}
+
+function waitForVisualCompletion() {
+  return new Promise(resolve => {
+    const check = () => {
+      if (runnerState.visualPct >= 99.0 || !runnerState.active) {
+        resolve();
+      } else {
+        requestAnimationFrame(check);
+      }
+    };
+    check();
+  });
+}
+
+function stopLoadingRunner() {
+  runnerState.active = false;
+  if (runnerState.animId) cancelAnimationFrame(runnerState.animId);
+  const fxCanvas = document.getElementById('runner-fx-canvas');
+  if (fxCanvas) {
+    const fxCtx = fxCanvas.getContext('2d');
+    if (fxCtx) fxCtx.clearRect(0, 0, fxCanvas.width, fxCanvas.height);
   }
 }
 
@@ -559,8 +851,9 @@ async function connectGitHub() {
   const userLabel = document.getElementById('loading-username');
   if (userLabel) userLabel.textContent = `@${username}`;
 
-  updateLoadingProgress(15, 'Checking persistent telemetry cache...');
+  // Start continuous 60fps wave runner
   showScreen('loading');
+  startLoadingRunner();
 
   try {
     // Step 1: Developer Profile
@@ -571,20 +864,20 @@ async function connectGitHub() {
 
     // Step 2: Repositories & Stack (Zero-Rate-Limit Aggregation)
     setStep('step-repos', 'active');
-    updateLoadingProgress(60, 'Assembling repositories & multi-language ecosystem...');
+    updateLoadingProgress(62, 'Assembling repositories & multi-language ecosystem...');
     appState.repos = await fetchRepos(username);
     appState.detailedLanguages = await fetchDetailedLanguages(appState.repos, username);
     setStep('step-repos', 'done');
 
     // Step 3: Contribution Calendar (Independent of GitHub rate limits)
     setStep('step-contributions', 'active');
-    updateLoadingProgress(82, 'Syncing 365 days of contribution velocity...');
+    updateLoadingProgress(84, 'Syncing 365 days of contribution velocity...');
     appState.contributions = await fetchContributions(username);
     setStep('step-contributions', 'done');
 
     // Step 4: Activity Stream
     setStep('step-activity', 'active');
-    updateLoadingProgress(95, 'Generating 3D contribution matrix...');
+    updateLoadingProgress(96, 'Generating 3D contribution matrix...');
     appState.events = await fetchEvents(username);
     setStep('step-activity', 'done');
 
@@ -597,13 +890,15 @@ async function connectGitHub() {
       events: appState.events
     });
 
-    updateLoadingProgress(100, 'Visualizer ready!');
-    await new Promise(r => setTimeout(r, 400));
-
+    updateLoadingProgress(100, 'Visualizer ready! Launching dashboard...');
+    await waitForVisualCompletion();
+    await new Promise(r => setTimeout(r, 350));
+    stopLoadingRunner();
     renderDashboard();
     showScreen('dashboard');
 
   } catch (err) {
+    stopLoadingRunner();
     showToast(err.message, true);
     showScreen('landing');
   }
@@ -1540,86 +1835,242 @@ function initHoverInk() {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  KINDRED DOTS CANVAS ENGINE (MotionSites kindred-dots-hero)
+//  CYBER MATRIX & LUMINOUS CONSTELLATION CANVAS ENGINE
+//  - Vibrant 60fps floating particle constellation mesh
+//  - Interactive cursor energy repulsion & glowing ripples
+//  - Ambient developer grid with horizon coordinate lighting
+//  - Zero white background, 100% Obsidian theme integration
 // ═══════════════════════════════════════════════════════════
 
 function initKindredDots() {
   const canvas = document.getElementById('kindred-canvas');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
-  
-  let width = (canvas.width = window.innerWidth);
-  let height = (canvas.height = window.innerHeight);
 
-  window.addEventListener('resize', () => {
-    width = canvas.width = window.innerWidth;
-    height = canvas.height = window.innerHeight;
-  });
+  let width = 0;
+  let height = 0;
+  let dpr = 1;
 
-  const mouse = { x: -1000, y: -1000, active: false };
-  window.addEventListener('pointermove', e => {
-    mouse.x = e.clientX;
-    mouse.y = e.clientY;
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    canvas.style.width = width + 'px';
+    canvas.style.height = height + 'px';
+    ctx.scale(dpr, dpr);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const mouse = { x: -1000, y: -1000, active: false, targetX: -1000, targetY: -1000 };
+  window.addEventListener('pointermove', (e) => {
+    mouse.targetX = e.clientX;
+    mouse.targetY = e.clientY;
     mouse.active = true;
   });
-
   window.addEventListener('pointerleave', () => {
     mouse.active = false;
   });
 
-  const spacing = 32;
+  // Telemetry Spark Nodes (GitHub theme palette)
+  const PALETTES = [
+    { color: '63, 185, 80' },   // Emerald
+    { color: '88, 166, 255' },  // Cyber Cyan
+    { color: '163, 113, 247' }, // Electric Violet
+    { color: '240, 136, 62' },  // Amber
+    { color: '244, 63, 94' }    // Pink
+  ];
+
+  const particles = [];
+  const COUNT = Math.min(85, Math.max(50, Math.floor((window.innerWidth * window.innerHeight) / 16000)));
+
+  for (let i = 0; i < COUNT; i++) {
+    const rand = Math.random() * 10;
+    let chosen = PALETTES[0].color;
+    if (rand > 4 && rand <= 6.5) chosen = PALETTES[1].color;
+    else if (rand > 6.5 && rand <= 8.5) chosen = PALETTES[2].color;
+    else if (rand > 8.5 && rand <= 9.5) chosen = PALETTES[3].color;
+    else if (rand > 9.5) chosen = PALETTES[4].color;
+
+    particles.push({
+      x: Math.random() * width,
+      y: Math.random() * height,
+      vx: (Math.random() - 0.5) * 0.45,
+      vy: (Math.random() - 0.5) * 0.45,
+      radius: 1.8 + Math.random() * 1.8,
+      baseRadius: 1.8 + Math.random() * 1.8,
+      color: chosen,
+      alpha: 0.35 + Math.random() * 0.45,
+      baseAlpha: 0.35 + Math.random() * 0.45,
+      phase: Math.random() * Math.PI * 2,
+      pulseSpeed: 0.015 + Math.random() * 0.02
+    });
+  }
+
+  // Laser beam coordinates for data packet pulses
+  const dataPackets = [
+    { x: 0, y: 120, speed: 2.8, len: 140, axis: 'h' },
+    { x: 240, y: 0, speed: 2.2, len: 110, axis: 'v' }
+  ];
+
   let time = 0;
 
-  function draw() {
-    ctx.clearRect(0, 0, width, height);
-    time += 0.015;
+  function render(now) {
+    time += 0.016;
 
-    const cols = Math.ceil(width / spacing);
-    const rows = Math.ceil(height / spacing);
+    // Smooth mouse position interpolation
+    if (mouse.active) {
+      mouse.x += (mouse.targetX - mouse.x) * 0.15;
+      mouse.y += (mouse.targetY - mouse.y) * 0.15;
+    } else {
+      mouse.x = -1000;
+      mouse.y = -1000;
+    }
+
+    ctx.clearRect(0, 0, width, height);
+
+    // 1. Cyber Perspective Coordinate Grid
+    const gridSize = 56;
+    ctx.lineWidth = 1;
+    const gridAlpha = 0.045 + Math.sin(time * 0.5) * 0.015;
+
+    // Draw grid lines
+    ctx.strokeStyle = 'rgba(255, 255, 255, ' + gridAlpha.toFixed(3) + ')';
+    ctx.beginPath();
+    const cols = Math.ceil(width / gridSize);
+    const rows = Math.ceil(height / gridSize);
 
     for (let c = 0; c <= cols; c++) {
-      for (let r = 0; r <= rows; r++) {
-        const originX = c * spacing;
-        const originY = r * spacing;
+      const gx = c * gridSize;
+      ctx.moveTo(gx, 0);
+      ctx.lineTo(gx, height);
+    }
+    for (let r = 0; r <= rows; r++) {
+      const gy = r * gridSize;
+      ctx.moveTo(0, gy);
+      ctx.lineTo(width, gy);
+    }
+    ctx.stroke();
 
-        // Subtle ambient wave oscillation
-        const wave = Math.sin(time + originX * 0.005 + originY * 0.005) * 2;
-
-        let posX = originX;
-        let posY = originY + wave;
-        let radius = 1.2;
-        let alpha = 0.12;
-
-        // Mouse proximity reaction (Kindred style)
-        if (mouse.active) {
-          const dx = mouse.x - posX;
-          const dy = mouse.y - posY;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const maxDist = 180;
-
-          if (dist < maxDist) {
-            const factor = 1 - dist / maxDist;
-            // Gentle repulsion
-            posX -= (dx / dist) * factor * 12;
-            posY -= (dy / dist) * factor * 12;
-            radius = 1.2 + factor * 2.2;
-            alpha = 0.15 + factor * 0.65;
-          }
+    // 2. Data Packet Pulses traversing grid lines
+    dataPackets.forEach((p) => {
+      if (p.axis === 'h') {
+        p.x += p.speed;
+        if (p.x > width + p.len) {
+          p.x = -p.len;
+          p.y = Math.floor(Math.random() * (height / gridSize)) * gridSize;
         }
-
+        const grad = ctx.createLinearGradient(p.x - p.len, p.y, p.x, p.y);
+        grad.addColorStop(0, 'rgba(63, 185, 80, 0)');
+        grad.addColorStop(0.8, 'rgba(63, 185, 80, 0.3)');
+        grad.addColorStop(1, 'rgba(88, 166, 255, 0.7)');
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
-        ctx.arc(posX, posY, radius, 0, Math.PI * 2);
-        ctx.fillStyle = alpha > 0.3 
-          ? `rgba(63, 185, 80, ${alpha})` 
-          : `rgba(255, 255, 255, ${alpha})`;
-        ctx.fill();
+        ctx.moveTo(p.x - p.len, p.y);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      } else {
+        p.y += p.speed;
+        if (p.y > height + p.len) {
+          p.y = -p.len;
+          p.x = Math.floor(Math.random() * (width / gridSize)) * gridSize;
+        }
+        const grad = ctx.createLinearGradient(p.x, p.y - p.len, p.x, p.y);
+        grad.addColorStop(0, 'rgba(163, 113, 247, 0)');
+        grad.addColorStop(0.8, 'rgba(163, 113, 247, 0.3)');
+        grad.addColorStop(1, 'rgba(88, 166, 255, 0.7)');
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y - p.len);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      }
+    });
+
+    // 3. Interactive Cursor Glow Field
+    if (mouse.active) {
+      const aura = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, 180);
+      aura.addColorStop(0, 'rgba(63, 185, 80, 0.12)');
+      aura.addColorStop(0.4, 'rgba(88, 166, 255, 0.05)');
+      aura.addColorStop(1, 'rgba(7, 8, 12, 0)');
+      ctx.fillStyle = aura;
+      ctx.fillRect(mouse.x - 180, mouse.y - 180, 360, 360);
+    }
+
+    // 4. Update and Draw Particles
+    for (let i = 0; i < particles.length; i++) {
+      const pt = particles[i];
+
+      // Ambient drift
+      pt.x += pt.vx;
+      pt.y += pt.vy;
+      pt.phase += pt.pulseSpeed;
+
+      // Wrap around edges cleanly
+      if (pt.x < -20) pt.x = width + 20;
+      if (pt.x > width + 20) pt.x = -20;
+      if (pt.y < -20) pt.y = height + 20;
+      if (pt.y > height + 20) pt.y = -20;
+
+      // Mouse deflection interaction
+      if (mouse.active) {
+        const dx = pt.x - mouse.x;
+        const dy = pt.y - mouse.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const maxDist = 160;
+        if (dist < maxDist && dist > 1) {
+          const force = (1 - dist / maxDist) * 3.2;
+          pt.x += (dx / dist) * force;
+          pt.y += (dy / dist) * force;
+          pt.alpha = Math.min(1.0, pt.baseAlpha + (1 - dist / maxDist) * 0.5);
+          pt.radius = pt.baseRadius * (1 + (1 - dist / maxDist) * 0.8);
+        } else {
+          pt.alpha += (pt.baseAlpha - pt.alpha) * 0.04;
+          pt.radius += (pt.baseRadius - pt.radius) * 0.04;
+        }
+      }
+
+      // Draw particle glow
+      const curAlpha = pt.alpha * (0.8 + Math.sin(pt.phase) * 0.2);
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, pt.radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(' + pt.color + ', ' + curAlpha.toFixed(2) + ')';
+      ctx.shadowColor = 'rgba(' + pt.color + ', 0.8)';
+      ctx.shadowBlur = 8;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    // 5. Constellation Connecting Lines
+    ctx.lineWidth = 0.8;
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const p1 = particles[i];
+        const p2 = particles[j];
+        const dx = p1.x - p2.x;
+        const dy = p1.y - p2.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        const maxLink = 110;
+
+        if (dist < maxLink) {
+          const linkAlpha = (1 - dist / maxLink) * 0.22;
+          ctx.strokeStyle = 'rgba(63, 185, 80, ' + linkAlpha.toFixed(3) + ')';
+          ctx.beginPath();
+          ctx.moveTo(p1.x, p1.y);
+          ctx.lineTo(p2.x, p2.y);
+          ctx.stroke();
+        }
       }
     }
 
-    requestAnimationFrame(draw);
+    requestAnimationFrame(render);
   }
 
-  requestAnimationFrame(draw);
+  requestAnimationFrame(render);
 }
 
 // ═══════════════════════════════════════════════════════════
