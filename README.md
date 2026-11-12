@@ -27,23 +27,10 @@ A polished, high-performance GitHub profile visualizer featuring interactive 3D 
   - CORS proxy mirror fallback to handle unauthenticated rate limits seamlessly.
   - In-app PAT management to expand capacity to 5,000 req/hr.
 
-## 🚀 Getting Started
-
-Simply serve the project folder with any local web server:
-
-```bash
-# Python 3
-python3 -m http.server 7777
-
-# Node / npx
-npx serve -l 7777 .
-```
-
-Then open `http://localhost:7777` in your browser.
-
 ## 🛠️ Tech Stack
 
 - Vanilla JavaScript (ES2022+ Async/Await, Web Components, DOM APIs)
 - Modern CSS (Custom properties, 3D Transforms, Glassmorphism, Keyframe animations)
 - Semantic HTML5
 - GitHub REST API v3 & Jogruber Contribution Matrix API
+
