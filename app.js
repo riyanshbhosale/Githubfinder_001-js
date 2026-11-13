@@ -7,6 +7,7 @@ let appState = {
   username: '',
   profile: null,
   repos: [],
+  starredCount: 0,
   detailedLanguages: {},
   langScope: 'all',
   contributions: { contributions: [], total: {} },
@@ -100,6 +101,10 @@ function animateNumber(el, target, duration = 800) {
   const start = 0;
   const startTime = performance.now();
   target = Number(target) || 0;
+  if (target === 0) {
+    el.textContent = '0';
+    return;
+  }
   function tick(now) {
     const elapsed = now - startTime;
     const progress = Math.min(elapsed / duration, 1);
@@ -283,7 +288,7 @@ function triggerMascotBounce() {
 //  - Seed registry & mirror fallback for zero-delay offline readiness
 // ═══════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v11';
+const CACHE_VERSION = 'v13';
 
 function purgeOldCaches() {
   try {
@@ -298,51 +303,6 @@ function purgeOldCaches() {
   }
 }
 
-const SEED_PROFILES = {
-  'torvalds': {
-    profile: {
-      login: 'torvalds',
-      name: 'Linus Torvalds',
-      avatar_url: 'https://github.com/torvalds.png',
-      html_url: 'https://github.com/torvalds',
-      bio: 'Creator of Linux and Git',
-      location: 'Portland, OR',
-      company: 'Linux Foundation',
-      created_at: '2011-09-03T00:00:00Z',
-      public_repos: 7,
-      followers: 240000,
-      following: 0
-    },
-    repos: [
-      {
-        name: 'linux',
-        html_url: 'https://github.com/torvalds/linux',
-        description: 'Linux kernel source tree',
-        language: 'C',
-        stargazers_count: 185000,
-        forks_count: 55000,
-        updated_at: '2026-11-08T00:00:00Z',
-        fork: false,
-        size: 1500000
-      },
-      {
-        name: 'subsurface-for-dirk',
-        html_url: 'https://github.com/torvalds/subsurface-for-dirk',
-        description: 'Divelog program',
-        language: 'C++',
-        stargazers_count: 850,
-        forks_count: 180,
-        updated_at: '2026-08-10T00:00:00Z',
-        fork: false,
-        size: 24000
-      }
-    ],
-    detailedLanguages: {
-      'linux': { 'C': 8500000, 'Assembly': 450000, 'Makefile': 120000 },
-      'subsurface-for-dirk': { 'C++': 180000, 'C': 95000 }
-    }
-  }
-};
 
 function getCacheKey(username) {
   return `gitpulse_${CACHE_VERSION}_cache_${username.toLowerCase()}`;
@@ -352,7 +312,13 @@ function getCachedData(username) {
   try {
     const raw = localStorage.getItem(getCacheKey(username));
     if (!raw) return null;
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    // Expire cache after 15 minutes to guarantee data accuracy
+    if (!parsed || !parsed.cachedAt || (Date.now() - parsed.cachedAt > 15 * 60 * 1000)) {
+      localStorage.removeItem(getCacheKey(username));
+      return null;
+    }
+    return parsed;
   } catch {
     return null;
   }
@@ -393,7 +359,7 @@ async function fetchProfile(username) {
     return cached.profile;
   }
 
-  // 2. Try direct GitHub API
+  // 2. Direct GitHub API fetch (native CORS supported)
   let rateLimited = false;
   try {
     const res = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}`, {
@@ -410,34 +376,51 @@ async function fetchProfile(username) {
 
     if (res.status === 403) {
       rateLimited = true;
-      console.warn('GitHub API rate limit reached, trying CORS mirror proxy...');
+      console.warn('GitHub API rate limit reached (60 req/hr).');
     }
   } catch (err) {
     if (err.message && err.message.includes('not found')) throw err;
-    console.warn('Direct GitHub fetch failed:', err);
-  }
-
-  // 3. Try CORS mirror proxy to bypass unauthenticated IP limits
-  try {
-    const mirrorRes = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(`https://api.github.com/users/${username}`)}`);
-    if (mirrorRes.ok) {
-      const data = await mirrorRes.json();
-      if (data && data.login) return data;
-    }
-  } catch (e) {
-    console.warn('Mirror profile fetch failed:', e);
-  }
-
-  // 4. Check Seed database for demo accounts
-  if (SEED_PROFILES[unameLower] && SEED_PROFILES[unameLower].profile) {
-    return SEED_PROFILES[unameLower].profile;
+    console.warn('GitHub profile fetch failed:', err);
   }
 
   if (rateLimited) {
-    throw new Error(`GitHub rate limit (60 req/hr) reached. Please add a free GitHub Token in API Settings to unlock 5,000 req/hr.`);
+    throw new Error(`GitHub rate limit (60 req/hr) reached. Click 'API Settings' to enter a free GitHub Personal Access Token and unlock 5,000 req/hr.`);
   }
 
   throw new Error(`Could not load profile for @${username}. Please check the username or your internet connection.`);
+}
+
+async function fetchStarredCount(username) {
+  const unameLower = username.toLowerCase();
+
+  // 1. Check local persistent cache
+  const cached = getCachedData(unameLower);
+  if (cached && typeof cached.starredCount === 'number') {
+    return cached.starredCount;
+  }
+
+  // 2. Direct GitHub API fetch for starred repositories count (matches GitHub profile Stars tab)
+  try {
+    const res = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}/starred?per_page=1`, {
+      headers: getGitHubHeaders()
+    });
+
+    if (res.ok) {
+      const link = res.headers.get('link') || res.headers.get('Link');
+      if (link && link.includes('rel="last"')) {
+        const match = link.match(/[?&]page=(\d+)[^>]*>;\s*rel="last"/);
+        if (match && match[1]) {
+          return parseInt(match[1], 10);
+        }
+      }
+      const data = await res.json();
+      return Array.isArray(data) ? data.length : 0;
+    }
+  } catch (err) {
+    console.warn('Direct GitHub starred count fetch failed:', err);
+  }
+
+  return 0;
 }
 
 async function fetchRepos(username) {
@@ -449,7 +432,7 @@ async function fetchRepos(username) {
     return cached.repos;
   }
 
-  // 2. Try direct GitHub API
+  // 2. Direct GitHub API fetch (fetch up to 100 repositories)
   try {
     const res = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}/repos?per_page=100&sort=updated`, {
       headers: getGitHubHeaders()
@@ -461,22 +444,6 @@ async function fetchRepos(username) {
     }
   } catch (err) {
     console.warn('Direct GitHub repos fetch failed:', err);
-  }
-
-  // 3. Try CORS mirror proxy
-  try {
-    const mirrorRes = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(`https://api.github.com/users/${username}/repos?per_page=100&sort=updated`)}`);
-    if (mirrorRes.ok) {
-      const data = await mirrorRes.json();
-      if (Array.isArray(data)) return data;
-    }
-  } catch (e) {
-    console.warn('Mirror repos fetch failed:', e);
-  }
-
-  // 4. Check Seed database for demo accounts
-  if (SEED_PROFILES[unameLower] && SEED_PROFILES[unameLower].repos) {
-    return SEED_PROFILES[unameLower].repos;
   }
 
   return [];
@@ -500,11 +467,6 @@ async function fetchDetailedLanguages(repos, username) {
         map[r.name] = { [r.language]: bytes };
       }
     });
-  }
-
-  // 3. Check Seed database for demo accounts
-  if (Object.keys(map).length === 0 && SEED_PROFILES[unameLower] && SEED_PROFILES[unameLower].detailedLanguages) {
-    return SEED_PROFILES[unameLower].detailedLanguages;
   }
 
   return map;
@@ -847,6 +809,14 @@ async function connectGitHub() {
     return;
   }
 
+  
+  // Clear previous user state completely to prevent any cross-user data bleeding
+  appState.profile = null;
+  appState.repos = [];
+  appState.starredCount = 0;
+  appState.detailedLanguages = {};
+  appState.contributions = { contributions: [], total: {} };
+  appState.events = [];
   appState.username = username;
   const userLabel = document.getElementById('loading-username');
   if (userLabel) userLabel.textContent = `@${username}`;
@@ -856,10 +826,15 @@ async function connectGitHub() {
   startLoadingRunner();
 
   try {
-    // Step 1: Developer Profile
+    // Step 1: Developer Profile & Stars
     setStep('step-profile', 'active');
-    updateLoadingProgress(35, 'Fetching profile credentials...');
-    appState.profile = await fetchProfile(username);
+    updateLoadingProgress(35, 'Fetching profile credentials & stars...');
+    const [profileData, starredCount] = await Promise.all([
+      fetchProfile(username),
+      fetchStarredCount(username)
+    ]);
+    appState.profile = profileData;
+    appState.starredCount = starredCount;
     setStep('step-profile', 'done');
 
     // Step 2: Repositories & Stack (Zero-Rate-Limit Aggregation)
@@ -884,6 +859,7 @@ async function connectGitHub() {
     // Save to local cache so future visits for this user load in 0ms with 0 API calls
     setCachedData(username, {
       profile: appState.profile,
+      starredCount: appState.starredCount,
       repos: appState.repos,
       detailedLanguages: appState.detailedLanguages,
       contributions: appState.contributions,
@@ -966,12 +942,12 @@ function renderDashboard() {
     joinEl.querySelector('span').textContent = 'Joined ' + fmtDate(p.created_at);
   }
 
-  // Header Numbers
-  const totalStars = repos.reduce((sum, r) => sum + (r.stargazers_count || 0), 0);
+  // Header Numbers: Exactly mirrors GitHub profile metrics (Repositories, Followers, Following, Stars)
+  const displayStars = typeof appState.starredCount === 'number' ? appState.starredCount : 0;
   animateNumber(document.getElementById('stat-repos'), p.public_repos);
   animateNumber(document.getElementById('stat-followers'), p.followers);
   animateNumber(document.getElementById('stat-following'), p.following);
-  animateNumber(document.getElementById('stat-stars'), totalStars);
+  animateNumber(document.getElementById('stat-stars'), displayStars);
 
   // ── HUD Streaks & Metrics ──
   renderStreakHUD(contribs);
@@ -1510,6 +1486,7 @@ function renderReposGrid(repos) {
         <div class="repo-name-box">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
           <span>${repo.name}</span>
+          ${repo.fork ? '<span class="repo-fork-tag">Fork</span>' : ''}
         </div>
         <svg class="repo-ext-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17L17 7M7 7h10v10"/></svg>
       </div>
@@ -1694,7 +1671,9 @@ function renderCardStory(profile, repos, contribs) {
   if (langCountEl) langCountEl.textContent = `${totalLangsCount} languages`;
 
   // Chapter 4: The Impact & OSS
-  const totalStars = repos.reduce((sum, r) => sum + (r.stargazers_count || 0), 0);
+  // Only count stars on repositories created/authored by the user (exclude forks)
+  const ownRepos = repos.filter(r => !r.fork);
+  const totalStars = ownRepos.reduce((sum, r) => sum + (r.stargazers_count || 0), 0);
   const forksCount = repos.filter(r => r.fork).length;
 
   const impactHeadline = document.getElementById('story-impact-headline');
@@ -1704,10 +1683,11 @@ function renderCardStory(profile, repos, contribs) {
 
   if (impactHeadline) impactHeadline.textContent = `${repos.length} Repositories Active`;
   if (impactText) impactText.textContent = forksCount > 0 
-    ? `Engaged in ${forksCount} open-source repositories with ${totalStars} total stars earned.`
+    ? `Authored ${ownRepos.length} original codebases with ${totalStars} stars earned, plus ${forksCount} open-source forks.`
     : `Authored ${repos.length} codebases with ${totalStars} total community stars.`;
+  const displayStars = typeof appState.starredCount === 'number' ? appState.starredCount : totalStars;
   if (reposVal) reposVal.textContent = repos.length.toString();
-  if (starsVal) starsVal.textContent = totalStars.toString();
+  if (starsVal) starsVal.textContent = displayStars.toString();
 
   // Determine Developer Archetype
   let archetype = 'Software Craftsman';

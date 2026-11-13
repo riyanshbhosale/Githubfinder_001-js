@@ -2726,3 +2726,23 @@ body {
   .heatmap-ribbon { width: 100%; justify-content: space-between; }
   .lang-container { flex-direction: column; }
 }
+
+
+.repo-name-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.repo-fork-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1px 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+}
