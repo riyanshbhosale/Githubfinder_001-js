@@ -70,9 +70,3 @@ Or simply open `index.html` directly in any modern web browser.
 ├── assets/           # Mascot artwork and static visual assets
 └── README.md         # Project documentation
 ```
-
----
-
-## 📄 License
-
-MIT License © [Riyansh Bhosale](https://github.com/riyanshbhosale)
