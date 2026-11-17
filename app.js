@@ -9,7 +9,7 @@ let appState = {
   repos: [],
   starredCount: 0,
   detailedLanguages: {},
-  langScope: 'all',
+  langScope: 'personal',
   contributions: { contributions: [], total: {} },
   events: [],
   activeSort: 'stars',
@@ -17,18 +17,18 @@ let appState = {
 
 // ── Language Color Palette ────────────────────────────────
 const LANG_COLORS = {
-  JavaScript:  '#F1E05A', TypeScript: '#3178C6', Python:     '#3572A5',
-  Java:        '#B07219', 'C++':      '#F34B7D', C:          '#777777',
-  'C#':        '#178600', Go:         '#00ADD8', Rust:       '#DEA584',
-  Ruby:        '#701516', PHP:        '#4F5D95', Swift:      '#F05138',
-  Kotlin:      '#A97BFF', Dart:       '#00B4AB', Scala:      '#C22D40',
-  Shell:       '#89E051', HTML:       '#E34C26', CSS:        '#563D7C',
-  Vue:         '#41B883', Svelte:     '#FF3E00', Lua:        '#000080',
-  R:           '#198CE7', Julia:      '#A270BA', Haskell:    '#5E5086',
-  Elixir:      '#6E4A7E', Clojure:    '#DB5855', Perl:       '#0298C3',
-  Objective_C: '#438EFF', MATLAB:     '#E16737', Jupyter:    '#F37626',
-  Vim_Script:  '#199F4B', Dockerfile: '#384D54', Makefile:   '#427819',
-  Zig:         '#EC915C', Nim:        '#FFE953', OCaml:      '#3BE133',
+  JavaScript: '#F1E05A', TypeScript: '#3178C6', Python: '#3572A5',
+  Java: '#B07219', 'C++': '#F34B7D', C: '#777777',
+  'C#': '#178600', Go: '#00ADD8', Rust: '#DEA584',
+  Ruby: '#701516', PHP: '#4F5D95', Swift: '#F05138',
+  Kotlin: '#A97BFF', Dart: '#00B4AB', Scala: '#C22D40',
+  Shell: '#89E051', HTML: '#E34C26', CSS: '#563D7C',
+  Vue: '#41B883', Svelte: '#FF3E00', Lua: '#000080',
+  R: '#198CE7', Julia: '#A270BA', Haskell: '#5E5086',
+  Elixir: '#6E4A7E', Clojure: '#DB5855', Perl: '#0298C3',
+  Objective_C: '#438EFF', MATLAB: '#E16737', Jupyter: '#F37626',
+  Vim_Script: '#199F4B', Dockerfile: '#384D54', Makefile: '#427819',
+  Zig: '#EC915C', Nim: '#FFE953', OCaml: '#3BE133',
 };
 
 function getLangColor(lang) {
@@ -81,10 +81,10 @@ function showToast(msg, isError = false) {
     document.body.appendChild(toast);
   }
   toast.className = 'toast-msg' + (isError ? ' error' : '');
-  toast.innerHTML = isError 
+  toast.innerHTML = isError
     ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>${msg}</span>`
     : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg><span>${msg}</span>`;
-  
+
   requestAnimationFrame(() => toast.classList.add('visible'));
   setTimeout(() => toast.classList.remove('visible'), 3500);
 }
@@ -288,7 +288,7 @@ function triggerMascotBounce() {
 //  - Seed registry & mirror fallback for zero-delay offline readiness
 // ═══════════════════════════════════════════════════════════
 
-const CACHE_VERSION = 'v13';
+const CACHE_VERSION = 'v18';
 
 function purgeOldCaches() {
   try {
@@ -347,8 +347,71 @@ function getGitHubHeaders() {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  API CLIENT WITH AUTOMATIC RATE-LIMIT BYPASS
+//  API CLIENT WITH AUTOMATIC RATE-LIMIT BYPASS & MULTI-PROXY
 // ═══════════════════════════════════════════════════════════
+
+async function fetchWithRateLimitBypass(url) {
+  // 1. Direct GitHub API
+  let isRateLimited = false;
+  try {
+    const res = await fetch(url, { headers: getGitHubHeaders() });
+    if (res.ok) {
+      const data = await res.json();
+      return { ok: true, data, headers: res.headers };
+    }
+    if (res.status === 404) return { ok: false, notFound: true };
+    if (res.status === 403) {
+      isRateLimited = true;
+      console.warn('GitHub IP limit reached. Auto-switching to high-speed CORS proxies...');
+    }
+  } catch (err) {
+    console.warn('Direct GitHub fetch failed, attempting mirror proxies:', err);
+  }
+
+  // 2. High-Reliability Proxy 1: corsproxy.io
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 3000);
+    const p = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(url)}`, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (p.ok) {
+      const data = await p.json();
+      if (data && !data.message?.includes('API rate limit')) {
+        return { ok: true, data, headers: p.headers };
+      }
+    }
+  } catch (e) { }
+
+  // 3. High-Reliability Proxy 2: codetabs
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 3000);
+    const p = await fetch(`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (p.ok) {
+      const data = await p.json();
+      if (data && !data.message?.includes('API rate limit')) {
+        return { ok: true, data, headers: p.headers };
+      }
+    }
+  } catch (e) { }
+
+  // 4. Proxy 3: allorigins.win
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 3000);
+    const p = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, { signal: ctrl.signal });
+    clearTimeout(timer);
+    if (p.ok) {
+      const data = await p.json();
+      if (data && !data.message?.includes('API rate limit')) {
+        return { ok: true, data, headers: p.headers };
+      }
+    }
+  } catch (e) { }
+
+  return { ok: false, isRateLimited };
+}
 
 async function fetchProfile(username) {
   const unameLower = username.toLowerCase();
@@ -359,31 +422,17 @@ async function fetchProfile(username) {
     return cached.profile;
   }
 
-  // 2. Direct GitHub API fetch (native CORS supported)
-  let rateLimited = false;
-  try {
-    const res = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}`, {
-      headers: getGitHubHeaders()
-    });
-
-    if (res.ok) {
-      return await res.json();
-    }
-
-    if (res.status === 404) {
-      throw new Error(`User @${username} was not found on GitHub.`);
-    }
-
-    if (res.status === 403) {
-      rateLimited = true;
-      console.warn('GitHub API rate limit reached (60 req/hr).');
-    }
-  } catch (err) {
-    if (err.message && err.message.includes('not found')) throw err;
-    console.warn('GitHub profile fetch failed:', err);
+  // 2. Multi-tier resilient fetch
+  const result = await fetchWithRateLimitBypass(`https://api.github.com/users/${encodeURIComponent(username)}`);
+  if (result.ok && result.data && result.data.login) {
+    return result.data;
   }
 
-  if (rateLimited) {
+  if (result.notFound) {
+    throw new Error(`User @${username} was not found on GitHub.`);
+  }
+
+  if (result.isRateLimited) {
     throw new Error(`GitHub rate limit (60 req/hr) reached. Click 'API Settings' to enter a free GitHub Personal Access Token and unlock 5,000 req/hr.`);
   }
 
@@ -432,18 +481,10 @@ async function fetchRepos(username) {
     return cached.repos;
   }
 
-  // 2. Direct GitHub API fetch (fetch up to 100 repositories)
-  try {
-    const res = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}/repos?per_page=100&sort=updated`, {
-      headers: getGitHubHeaders()
-    });
-
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data)) return data;
-    }
-  } catch (err) {
-    console.warn('Direct GitHub repos fetch failed:', err);
+  // 2. Multi-tier resilient fetch
+  const result = await fetchWithRateLimitBypass(`https://api.github.com/users/${encodeURIComponent(username)}/repos?per_page=100&sort=updated`);
+  if (result.ok && Array.isArray(result.data)) {
+    return result.data;
   }
 
   return [];
@@ -458,15 +499,44 @@ async function fetchDetailedLanguages(repos, username) {
     return cached.detailedLanguages;
   }
 
-  // 2. High-Efficiency In-Memory Aggregation from user's real repos
   const map = {};
-  if (Array.isArray(repos)) {
-    repos.forEach(r => {
-      if (r.language) {
-        const bytes = Math.max((r.size || 10) * 1024, 4096);
-        map[r.name] = { [r.language]: bytes };
-      }
-    });
+  if (!Array.isArray(repos) || repos.length === 0) return map;
+
+  // 2. Instant Zero-Delay Aggregation from repos (takes 0ms!)
+  repos.forEach(r => {
+    if (r.language) {
+      map[r.name] = { [r.language]: 10000 };
+    }
+  });
+
+  // 3. Asynchronous non-blocking background fetch (never stalls the loading screen)
+  const ownList = [...repos].filter(r => !r.fork);
+  const prioritized = (ownList.length > 0 ? ownList : [...repos]).slice(0, 3);
+
+  if (prioritized.length > 0) {
+    Promise.all(prioritized.map(async (r) => {
+      try {
+        const owner = r.owner?.login || username;
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 1200);
+        const res = await fetch(`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(r.name)}/languages`, {
+          headers: getGitHubHeaders(),
+          signal: ctrl.signal
+        });
+        clearTimeout(timer);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+            map[r.name] = data;
+            // If already on dashboard screen, quietly refresh tech stack
+            const dashScreen = document.getElementById('screen-dashboard');
+            if (dashScreen && dashScreen.classList.contains('active')) {
+              renderTechnologyStack(appState.repos);
+            }
+          }
+        }
+      } catch (e) { }
+    })).catch(() => { });
   }
 
   return map;
@@ -474,7 +544,7 @@ async function fetchDetailedLanguages(repos, username) {
 
 async function fetchContributions(username) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 6500);
+  const timeoutId = setTimeout(() => controller.abort(), 1600);
   try {
     const res = await fetch(`https://github-contributions-api.jogruber.de/v4/${encodeURIComponent(username)}?y=last`, {
       signal: controller.signal
@@ -654,10 +724,10 @@ function startLoadingRunner() {
     // Smooth forward interpolation with dynamic acceleration (fluid & never freezing)
     const diff = runnerState.targetPct - runnerState.visualPct;
     if (diff > 0.05) {
-      const spd = runnerState.targetPct >= 100 ? 5.0 : 3.8;
-      runnerState.visualPct += diff * Math.min(dt * spd, 0.28) + dt * 2.2;
+      const spd = runnerState.targetPct >= 100 ? 14.0 : 6.0;
+      runnerState.visualPct += diff * Math.min(dt * spd, 0.45) + dt * (runnerState.targetPct >= 100 ? 8.0 : 3.0);
     } else if (runnerState.visualPct < 98.5 && runnerState.targetPct < 100) {
-      runnerState.visualPct += dt * 2.0;
+      runnerState.visualPct += dt * 3.5;
     }
 
     if (runnerState.visualPct > 100) runnerState.visualPct = 100;
@@ -775,14 +845,22 @@ function updateLoadingProgress(target, status) {
 
 function waitForVisualCompletion() {
   return new Promise(resolve => {
-    const check = () => {
-      if (runnerState.visualPct >= 99.0 || !runnerState.active) {
+    let done = false;
+    const finish = () => {
+      if (!done) {
+        done = true;
         resolve();
+      }
+    };
+    const check = () => {
+      if (runnerState.visualPct >= 97.5 || !runnerState.active) {
+        finish();
       } else {
         requestAnimationFrame(check);
       }
     };
     check();
+    setTimeout(finish, 800); // 800ms fast fail-safe guarantee
   });
 }
 
@@ -809,7 +887,7 @@ async function connectGitHub() {
     return;
   }
 
-  
+
   // Clear previous user state completely to prevent any cross-user data bleeding
   appState.profile = null;
   appState.repos = [];
@@ -826,35 +904,54 @@ async function connectGitHub() {
   startLoadingRunner();
 
   try {
-    // Step 1: Developer Profile & Stars
     setStep('step-profile', 'active');
-    updateLoadingProgress(35, 'Fetching profile credentials & stars...');
-    const [profileData, starredCount] = await Promise.all([
-      fetchProfile(username),
-      fetchStarredCount(username)
+    setStep('step-repos', 'active');
+    setStep('step-contributions', 'active');
+    setStep('step-activity', 'active');
+    updateLoadingProgress(40, 'Connecting to GitHub telemetry streams...');
+
+    // Launch all network requests concurrently in parallel at t=0
+    const profilePromise = fetchProfile(username);
+    const starredPromise = fetchStarredCount(username);
+    const reposPromise = fetchRepos(username);
+    const contribsPromise = fetchContributions(username);
+    const eventsPromise = fetchEvents(username);
+
+    // Await core profile, stars, and repos
+    const [profileData, starredCount, reposData] = await Promise.all([
+      profilePromise,
+      starredPromise,
+      reposPromise
     ]);
+
     appState.profile = profileData;
     appState.starredCount = starredCount;
+    appState.repos = reposData;
+
     setStep('step-profile', 'done');
-
-    // Step 2: Repositories & Stack (Zero-Rate-Limit Aggregation)
-    setStep('step-repos', 'active');
-    updateLoadingProgress(62, 'Assembling repositories & multi-language ecosystem...');
-    appState.repos = await fetchRepos(username);
-    appState.detailedLanguages = await fetchDetailedLanguages(appState.repos, username);
     setStep('step-repos', 'done');
+    updateLoadingProgress(85, 'Assembling telemetry & velocity metrics...');
 
-    // Step 3: Contribution Calendar (Independent of GitHub rate limits)
-    setStep('step-contributions', 'active');
-    updateLoadingProgress(84, 'Syncing 365 days of contribution velocity...');
-    appState.contributions = await fetchContributions(username);
+    // Zero-delay instant language breakdown
+    appState.detailedLanguages = await fetchDetailedLanguages(reposData, username);
+
+    // Collect calendar & activity stream (already in-flight since t=0)
+    const [contribsData, eventsData] = await Promise.all([
+      contribsPromise,
+      eventsPromise
+    ]);
+
+    appState.contributions = contribsData;
+    appState.events = eventsData;
+
     setStep('step-contributions', 'done');
-
-    // Step 4: Activity Stream
-    setStep('step-activity', 'active');
-    updateLoadingProgress(96, 'Generating 3D contribution matrix...');
-    appState.events = await fetchEvents(username);
     setStep('step-activity', 'done');
+
+    updateLoadingProgress(100, 'Visualizer ready! Launching dashboard...');
+    await waitForVisualCompletion();
+    stopLoadingRunner();
+    renderDashboard();
+    showScreen('dashboard');
 
     // Save to local cache so future visits for this user load in 0ms with 0 API calls
     setCachedData(username, {
@@ -865,13 +962,6 @@ async function connectGitHub() {
       contributions: appState.contributions,
       events: appState.events
     });
-
-    updateLoadingProgress(100, 'Visualizer ready! Launching dashboard...');
-    await waitForVisualCompletion();
-    await new Promise(r => setTimeout(r, 350));
-    stopLoadingRunner();
-    renderDashboard();
-    showScreen('dashboard');
 
   } catch (err) {
     stopLoadingRunner();
@@ -907,7 +997,7 @@ function renderDashboard() {
 
   document.getElementById('profile-name').textContent = p.name || p.login;
   document.getElementById('profile-login').textContent = `@${p.login}`;
-  
+
   const bioEl = document.getElementById('profile-bio');
   if (bioEl) {
     bioEl.textContent = p.bio || 'Public software craftsman on GitHub.';
@@ -950,26 +1040,28 @@ function renderDashboard() {
   animateNumber(document.getElementById('stat-stars'), displayStars);
 
   // ── HUD Streaks & Metrics ──
-  renderStreakHUD(contribs);
+  try { renderStreakHUD(contribs); } catch (e) { console.error('HUD render error:', e); }
 
   // ── Card Story & Design Collage ──
-  renderCardStory(p, repos, contribs);
+  try { renderCardStory(p, repos, contribs); } catch (e) { console.error('Card story render error:', e); }
 
   // ── Matrix Heatmap ──
-  renderHeatmapMatrix(contribs);
+  try { renderHeatmapMatrix(contribs); } catch (e) { console.error('Heatmap render error:', e); }
 
   // ── Technology Ecosystem (Languages) ──
-  renderTechnologyStack(repos);
+  try { renderTechnologyStack(repos); } catch (e) { console.error('Tech stack render error:', e); }
 
   // ── Monthly Trajectory ──
-  renderMonthlyTrajectory(contribs);
+  try { renderMonthlyTrajectory(contribs); } catch (e) { console.error('Trajectory render error:', e); }
 
   // ── Showcase Repositories ──
-  appState.activeSort = 'stars';
-  sortRepos('stars');
+  try {
+    appState.activeSort = 'stars';
+    sortRepos('stars');
+  } catch (e) { console.error('Repos render error:', e); }
 
   // ── Event Stream ──
-  renderEventTimeline(appState.events);
+  try { renderEventTimeline(appState.events); } catch (e) { console.error('Timeline render error:', e); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1081,7 +1173,7 @@ function renderStreakHUD(contribs) {
   // Current Streak Subtitle
   const currentSub = document.getElementById('streak-current-dates');
   if (currentSub) {
-    currentSub.textContent = currentStreak > 0 
+    currentSub.textContent = currentStreak > 0
       ? `${fmtDate(currentStreakStart)} → Present`
       : 'Streak paused';
   }
@@ -1089,7 +1181,7 @@ function renderStreakHUD(contribs) {
   // Longest Streak Subtitle
   const longestSub = document.getElementById('streak-longest-dates');
   if (longestSub) {
-    longestSub.textContent = longestStreakStart 
+    longestSub.textContent = longestStreakStart
       ? `${fmtDate(longestStreakStart)} → ${fmtDate(longestStreakEnd)}`
       : 'All time record';
   }
@@ -1167,7 +1259,7 @@ function renderHeatmapMatrix(contribs) {
   if (currentWeek.length > 0) weeks.push(currentWeek);
 
   // Month Labels Positioning
-  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   let prevMonth = -1;
   const colWidth = 16.5; // cell width + gap
 
@@ -1206,7 +1298,7 @@ function renderHeatmapMatrix(contribs) {
           const rect = cell.getBoundingClientRect();
           const popCount = document.getElementById('tooltip-count');
           const popDate = document.getElementById('tooltip-date');
-          
+
           if (popCount) popCount.textContent = `${count} contribution${count !== 1 ? 's' : ''}`;
           if (popDate) popDate.textContent = fmtDayFull(item.date);
 
@@ -1245,7 +1337,7 @@ function toggleLangScope(scope) {
   if (tabAll) tabAll.classList.toggle('active', scope === 'all');
   if (tabPersonal) tabPersonal.classList.toggle('active', scope === 'personal');
   if (desc) {
-    desc.textContent = scope === 'all' 
+    desc.textContent = scope === 'all'
       ? 'All projects & open-source contributions'
       : 'Personal repositories (excluding external forks)';
   }
@@ -1258,20 +1350,23 @@ function renderTechnologyStack(repos) {
   const detailed = appState.detailedLanguages || {};
 
   // Filter based on scope
-  const targetRepos = appState.langScope === 'personal' 
+  const targetRepos = appState.langScope === 'personal'
     ? repos.filter(r => !r.fork)
     : repos;
 
-  targetRepos.forEach(r => {
+  const activeRepos = (targetRepos.length > 0 || appState.langScope === 'all')
+    ? targetRepos
+    : repos;
+
+  activeRepos.forEach(r => {
     // If we have precise multi-language byte breakdown from GitHub's /languages endpoint
     if (detailed[r.name] && Object.keys(detailed[r.name]).length > 0) {
       Object.entries(detailed[r.name]).forEach(([lang, bytes]) => {
         langMap[lang] = (langMap[lang] || 0) + bytes;
       });
     } else if (r.language) {
-      // Fallback: weight by repo size in bytes
-      const weight = Math.max((r.size || 1) * 1024, 2048);
-      langMap[r.language] = (langMap[r.language] || 0) + weight;
+      // Normalized weight to prevent repo disk/dataset size from distorting code proportions
+      langMap[r.language] = (langMap[r.language] || 0) + 10000;
     }
   });
 
@@ -1387,7 +1482,7 @@ function renderMonthlyTrajectory(contribs) {
   }
 
   const monthMap = {};
-  const monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   contributions.forEach(d => {
     const date = new Date(d.date);
@@ -1534,16 +1629,16 @@ function renderEventTimeline(events) {
   }
 
   const iconMap = {
-    PushEvent:              '🚀',
-    CreateEvent:            '📦',
-    DeleteEvent:            '🗑️',
-    WatchEvent:             '⭐',
-    ForkEvent:              '🍴',
-    PullRequestEvent:       '🔀',
+    PushEvent: '🚀',
+    CreateEvent: '📦',
+    DeleteEvent: '🗑️',
+    WatchEvent: '⭐',
+    ForkEvent: '🍴',
+    PullRequestEvent: '🔀',
     PullRequestReviewEvent: '👁️',
-    IssuesEvent:            '🎯',
-    IssueCommentEvent:      '💬',
-    ReleaseEvent:           '🎉',
+    IssuesEvent: '🎯',
+    IssueCommentEvent: '💬',
+    ReleaseEvent: '🎉',
   };
 
   function parseEventTitle(ev) {
@@ -1596,18 +1691,18 @@ function renderCardStory(profile, repos, contribs) {
   const contributions = contribs.contributions || [];
   const joinDate = new Date(profile.created_at || Date.now());
   const now = new Date();
-  
+
   // Chapter 1: The Origin
   const daysActive = Math.max((now - joinDate) / 86400000, 1);
   const yearsActive = (daysActive / 365.25).toFixed(1);
   const sinceMonthYear = joinDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
   const isRecent = daysActive < 365;
-  
+
   const originHeadline = document.getElementById('story-origin-headline');
   const originText = document.getElementById('story-origin-text');
   const ageVal = document.getElementById('story-age-val');
   const sinceVal = document.getElementById('story-since-val');
-  
+
   if (originHeadline) {
     originHeadline.textContent = isRecent
       ? `Active on GitHub Since ${joinDate.getFullYear()}`
@@ -1651,10 +1746,20 @@ function renderCardStory(profile, repos, contribs) {
   if (consistencyVal) consistencyVal.textContent = `${consistencyRate}%`;
   if (peakVal) peakVal.textContent = `${longestStreak} days`;
 
-  // Chapter 3: The Toolkit
+  // Chapter 3: The Toolkit (Authored stack prioritized)
+  const ownRepos = repos.filter(r => !r.fork);
+  const targetReposForLangs = ownRepos.length > 0 ? ownRepos : repos;
   const langCountMap = {};
-  repos.forEach(r => {
-    if (r.language) langCountMap[r.language] = (langCountMap[r.language] || 0) + 1;
+  const detailed = appState.detailedLanguages || {};
+
+  targetReposForLangs.forEach(r => {
+    if (detailed[r.name] && Object.keys(detailed[r.name]).length > 0) {
+      Object.keys(detailed[r.name]).forEach(l => {
+        langCountMap[l] = (langCountMap[l] || 0) + 1;
+      });
+    } else if (r.language) {
+      langCountMap[r.language] = (langCountMap[r.language] || 0) + 1;
+    }
   });
   const sortedLangs = Object.entries(langCountMap).sort((a, b) => b[1] - a[1]);
   const leadLang = sortedLangs.length > 0 ? sortedLangs[0][0] : 'Polyglot';
@@ -1672,7 +1777,6 @@ function renderCardStory(profile, repos, contribs) {
 
   // Chapter 4: The Impact & OSS
   // Only count stars on repositories created/authored by the user (exclude forks)
-  const ownRepos = repos.filter(r => !r.fork);
   const totalStars = ownRepos.reduce((sum, r) => sum + (r.stargazers_count || 0), 0);
   const forksCount = repos.filter(r => r.fork).length;
 
@@ -1682,7 +1786,7 @@ function renderCardStory(profile, repos, contribs) {
   const starsVal = document.getElementById('story-stars-val');
 
   if (impactHeadline) impactHeadline.textContent = `${repos.length} Repositories Active`;
-  if (impactText) impactText.textContent = forksCount > 0 
+  if (impactText) impactText.textContent = forksCount > 0
     ? `Authored ${ownRepos.length} original codebases with ${totalStars} stars earned, plus ${forksCount} open-source forks.`
     : `Authored ${repos.length} codebases with ${totalStars} total community stars.`;
   const displayStars = typeof appState.starredCount === 'number' ? appState.starredCount : totalStars;
